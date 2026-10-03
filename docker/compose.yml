@@ -1,0 +1,31 @@
+# glitchr/omnifood with every platform package, your keys in .env:
+#
+#   cp .env.dist .env                                            # fill in the keys at hand
+#   docker compose run --rm omnifood platforms                   # which platforms are installed and configured
+#   docker compose run --rm omnifood capabilities ubereats       # what the platform takes (no key needed)
+#   docker compose run --rm omnifood orders deliveroo --since "-2 hours"
+#   docker compose run --rm omnifood accept ubereats <order id> --ready-at "+20 minutes"
+#   docker compose run --rm omnifood menu:push justeat /omnifood/core/docker/menu.example.json --validate
+#   docker compose run --rm omnifood reservations thefork --from today --to "+7 days"
+#   docker compose run --rm omnifood notify ubereats body.json -H "X-Uber-Signature: ..."
+#   docker compose run --rm omnifood test                        # every package's tests
+#
+# Platforms come from GitHub (branch 1.x) unless their checkout sits under
+# OMNIFOOD_PLUGINS (set it to ../.. in .env when this core sits in the
+# workspace beside them): then that checkout is what runs.
+name: omnifood-harness
+
+services:
+  omnifood:
+    build: .
+    image: glitchr/omnifood-harness
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ..:/omnifood/core
+      - ${OMNIFOOD_PLUGINS:-./plugins}:/omnifood/plugins:ro
+      - harness:/harness
+
+volumes:
+  harness:

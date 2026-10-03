@@ -1,0 +1,16 @@
+{
+    "name": "Dîner",
+    "ref": "dinner",
+    "currency": "EUR",
+    "hours": {"1": [["12:00", "14:30"], ["19:00", "22:30"]], "5": [["12:00", "14:30"], ["19:00", "23:00"]]},
+    "categories": [
+        {"ref": "mains", "name": "Plats", "items": [
+            {"ref": "ramen", "name": "Shoyu ramen", "price": 1400, "vat": 10.0, "description": "Bouillon de volaille, œuf mollet", "allergens": ["gluten", "eggs", "soybeans"], "photo": "https://site.example/ramen.jpg",
+             "groups": [{"ref": "extras", "name": "Suppléments", "min": 0, "max": 2, "modifiers": [{"ref": "egg", "name": "Œuf", "price": 150}, {"ref": "nori", "name": "Nori", "price": 100}]}]},
+            {"ref": "gyoza", "name": "Gyoza", "price": 650, "vat": 10.0, "allergens": ["gluten"]}
+        ]},
+        {"ref": "drinks", "name": "Boissons", "items": [
+            {"ref": "sake", "name": "Saké", "price": 900, "vat": 20.0, "labels": ["alcohol", "vegan"]}
+        ]}
+    ]
+}

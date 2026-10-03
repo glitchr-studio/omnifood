@@ -1,0 +1,27 @@
+{
+    "name": "glitchr/omnifood",
+    "type": "library",
+    "description": "Omnifood: one contract for the restaurant platforms - delivery orders (Uber Eats, Deliveroo, Just Eat) and table reservations (TheFork, Zenchef) - their menus, their stores, their webhooks, and its Symfony bundle.",
+    "keywords": ["restaurant", "food", "delivery", "orders", "reservations", "menu", "ubereats", "deliveroo", "justeat", "thefork", "zenchef", "omnifood"],
+    "license": "LGPL-3.0-or-later",
+    "authors": [{"name": "Marco Meyer", "email": "marco.meyer@glitchr.io"}],
+    "require": {
+        "php": ">=8.2",
+        "symfony/http-client-contracts": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "symfony/config": "^6.4|^7.0|^8.0",
+        "symfony/dependency-injection": "^6.4|^7.0|^8.0",
+        "symfony/http-client": "^6.4|^7.0|^8.0",
+        "symfony/http-kernel": "^6.4|^7.0|^8.0"
+    },
+    "autoload": {
+        "psr-4": {"Omnifood\\": ""},
+        "exclude-from-classmap": ["/Tests/", "/docker/"]
+    },
+    "autoload-dev": {
+        "psr-4": {"Omnifood\\Tests\\": "Tests/"}
+    },
+    "config": {"sort-packages": true}
+}
