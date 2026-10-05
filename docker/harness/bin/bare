@@ -1,0 +1,96 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Omnifood in bare PHP: no bundle, no container, no console component. The
+ * registry is built by hand from the platform packages installed, each
+ * platform says what it takes (capabilities() needs no key), then Uber Eats
+ * reads an order from a recorded answer - no platform gives keys without a
+ * partner agreement - and the script lists what PHP loaded on the way.
+ *
+ *   docker compose run --rm omnifood bare           # exits 1 when a class of a framework was loaded
+ *   docker compose run --rm omnifood bare --json    # the same, whole: every class and file loaded
+ *
+ * OMNIFOOD_AUTOLOAD names another autoloader than the harness's.
+ */
+
+use Omnifood\MenuInterface;
+use Omnifood\NotifiableInterface;
+use Omnifood\OrdersInterface;
+use Omnifood\Registry;
+use Omnifood\ReservationsInterface;
+use Omnifood\StoreInterface;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
+
+require getenv('OMNIFOOD_AUTOLOAD') ?: '/harness/vendor/autoload.php';
+
+// Uber's answers, recorded: a token, the order o-1; anything else is not found.
+$recorded = static function (string $method, string $url): MockResponse {
+    return match (true) {
+        str_ends_with((string) parse_url($url, \PHP_URL_PATH), '/oauth/v2/token') => new MockResponse('{"access_token": "recorded", "expires_in": 2592000, "token_type": "Bearer"}'),
+        str_ends_with((string) parse_url($url, \PHP_URL_PATH), '/v1/delivery/order/o-1') => new MockResponse((string) file_get_contents(__DIR__.'/../recorded/ubereats-order.json')),
+        default => new MockResponse('{"code": "not_found", "message": "Not recorded."}', ['http_code' => 404]),
+    };
+};
+
+$factories = [];
+$config = [];
+foreach (require __DIR__.'/../plugins.php' as [, $class]) {
+    if (class_exists($class)) {
+        $factories[] = $factory = new $class(new MockHttpClient($recorded));
+        $config[$factory->getName()] = ['factory' => $factory->getName()];
+    }
+}
+if (isset($config['ubereats'])) {
+    $config['ubereats']['options'] = ['client_id' => 'recorded', 'client_secret' => 'recorded', 'store_id' => 'store-1'];
+}
+$registry = new Registry($factories, $config);
+
+$report = ['platforms' => [], 'order' => null];
+foreach ($registry->all() as $name => $platform) {
+    $capabilities = $platform->capabilities();
+    $report['platforms'][$name] = [
+        'does' => array_keys(array_filter(['orders' => $platform instanceof OrdersInterface, 'menu' => $platform instanceof MenuInterface, 'store' => $platform instanceof StoreInterface, 'reservations' => $platform instanceof ReservationsInterface, 'notify' => $platform instanceof NotifiableInterface])),
+        'acceptance_delay' => $capabilities->acceptanceDelay,
+    ];
+}
+if ($registry->has('ubereats')) {
+    $order = $registry->get('ubereats')->order('o-1');
+    $report['order'] = [
+        'reference' => $order->reference,
+        'display_id' => $order->displayId,
+        'type' => $order->type->value,
+        'status' => $order->status->value,
+        'lines' => array_map(static fn ($line) => $line->quantity.' x '.$line->name, $order->lines),
+        'total' => (string) $order->total,
+        'customer' => $order->customer?->name,
+        'pickup_at' => $order->pickupAt?->format(\DATE_ATOM),
+    ];
+}
+
+// What PHP loaded to get there: the proof that no framework was needed.
+$report['symbols'] = [...get_declared_classes(), ...get_declared_interfaces(), ...get_declared_traits()];
+$report['files'] = get_included_files();
+$framework = array_values(preg_grep('~^(?:Symfony\\\\Component\\\\(?:DependencyInjection|Config|HttpKernel|HttpFoundation)|Symfony\\\\Bundle|Doctrine|Twig)\\\\~', $report['symbols']));
+$symfony = array_values(array_unique(array_map(static fn (string $s) => implode('\\', \array_slice(explode('\\', $s), 0, 3)), preg_grep('~^Symfony\\\\(?!Polyfill)~', $report['symbols']))));
+sort($symfony);
+
+if (\in_array('--json', $argv, true)) {
+    echo json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE), "\n";
+    exit($framework ? 1 : 0);
+}
+
+echo "Omnifood in bare PHP: the registry built by hand, no bundle, no container.\n\n";
+foreach ($report['platforms'] as $name => $platform) {
+    printf("  %-10s %-32s %s\n", $name, implode(' ', $platform['does']) ?: '-', null !== $platform['acceptance_delay'] ? 'accepts within '.$platform['acceptance_delay'].' s' : '');
+}
+if (!$report['platforms']) {
+    echo "  no omnifood/* platform package is installed\n";
+}
+if ($order = $report['order']) {
+    printf("\nUber Eats, order %s from a recorded answer:\n  #%s %s %s, %s, %s, for %s, ready at %s\n", $order['reference'], $order['display_id'], $order['type'], $order['status'], implode(', ', $order['lines']), $order['total'], $order['customer'], $order['pickup_at']);
+}
+echo "\nLoaded from Symfony: ", implode(', ', $symfony) ?: 'nothing', "\n";
+echo 'Classes of a framework (DependencyInjection, Config, HttpKernel, HttpFoundation, a bundle, Doctrine, Twig): ', $framework ? implode(', ', $framework) : 'none', "\n";
+exit($framework ? 1 : 0);

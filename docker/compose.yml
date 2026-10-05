@@ -8,6 +8,7 @@
 #   docker compose run --rm omnifood menu:push justeat /omnifood/core/docker/menu.example.json --validate
 #   docker compose run --rm omnifood reservations thefork --from today --to "+7 days"
 #   docker compose run --rm omnifood notify ubereats body.json -H "X-Uber-Signature: ..."
+#   docker compose run --rm omnifood bare                        # plain PHP: no bundle, no container, and what PHP loaded
 #   docker compose run --rm omnifood test                        # every package's tests
 #
 # Platforms come from GitHub (branch 1.x) unless their checkout sits under
