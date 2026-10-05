@@ -16,6 +16,16 @@
         "symfony/http-client": "^6.4|^7.0|^8.0",
         "symfony/http-kernel": "^6.4|^7.0|^8.0"
     },
+    "suggest": {
+        "omnifood/ubereats": "Uber Eats: orders, menu, store, webhooks",
+        "omnifood/deliveroo": "Deliveroo: orders, menu, site, webhooks",
+        "omnifood/justeat": "Just Eat Takeaway.com (JET Connect): orders pushed, menu, restaurant offline",
+        "omnifood/thefork": "TheFork: reservations, availability, webhooks",
+        "omnifood/zenchef": "Zenchef: credentials and a configured client",
+        "symfony/config": "In a Symfony application: the configuration of Omnifood\\Bridge\\Symfony\\OmnifoodBundle",
+        "symfony/dependency-injection": "In a Symfony application: the services of Omnifood\\Bridge\\Symfony\\OmnifoodBundle",
+        "symfony/http-kernel": "In a Symfony application: Omnifood\\Bridge\\Symfony\\OmnifoodBundle itself"
+    },
     "autoload": {
         "psr-4": {"Omnifood\\": ""},
         "exclude-from-classmap": ["/Tests/", "/docker/"]
