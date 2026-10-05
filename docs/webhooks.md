@@ -5,21 +5,22 @@ signature, a key, a token - and reads it. It throws `InvalidSignatureException` 
 fails: answer 401 and do nothing.
 
 ```php
-#[Route('/webhooks/ubereats', methods: ['POST'])]
-public function ubereats(Request $request, NotifiableInterface $ubereats, MessageBusInterface $bus): Response
-{
-    try {
-        $notification = $ubereats->notify($request->getContent(), $request->headers->all());
-    } catch (InvalidSignatureException) {
-        return new Response('', 401);
-    }
-    $bus->dispatch(new HandleNotification($notification->channel->value, $notification->id, $notification->reference));
-
-    return new Response('', 200);
+// webhook.php, in plain PHP; $ubereats from the registry
+try {
+    $notification = $ubereats->notify((string) file_get_contents('php://input'), getallheaders());
+} catch (Omnifood\Exception\InvalidSignatureException) {
+    http_response_code(401);
+    exit;
 }
+$queue->push($notification->channel->value, $notification->id, $notification->reference);   // the application's queue
+http_response_code(200);
 ```
 
-Answer fast and work later (Messenger): the platforms retry when the answer is slow or not 2xx, and
+The body is the raw one, as received; the headers are an array, names in any case, as the request
+has them. In a Symfony controller: `$request->getContent()` and `$request->headers->all()`
+([Symfony](symfony.md#a-webhook)).
+
+Answer fast and work later (a queue, Messenger): the platforms retry when the answer is slow or not 2xx, and
 send the same event more than once, out of order. `Notification::$id` is the platform's event id
 (or one composed from the order and its status, the same on a retry): keep the ids handled.
 

@@ -5,8 +5,8 @@ and the table reservations (TheFork, Zenchef) - the Omnibus of the kitchen, besi
 glitchr/omnitrade (payments), glitchr/omnibus (shipping) and glitchr/omnipost (publishing).
 
 ```php
-// A webhook: checked, read, the same shape whatever the platform.
-$notification = $ubereats->notify($request->getContent(), $request->headers->all());
+// A webhook: its raw body and its headers checked, read, the same shape whatever the platform.
+$notification = $ubereats->notify(file_get_contents('php://input'), getallheaders());
 $order = $notification->order ?? $ubereats->order($notification->reference);
 
 $ubereats->accept($order->reference, new \DateTimeImmutable('+20 minutes'));   // within 11.5 minutes
@@ -38,8 +38,11 @@ it gives to accept, how deep modifiers nest, allergens, photos, VAT rates, names
 `Validator` lists what a menu breaks, by path, for a back office to show; `pushMenu()` runs it first.
 
 **The keys stay with the restaurant.** A platform is built from options - a client id, a secret, a
-store id - and calls the platform directly through the application's HTTP client. Omnifood depends
-on nothing but `symfony/http-client-contracts`; it never depends on omnibase.
+store id - and calls the platform directly through the application's HTTP client.
+
+**No framework.** The core requires nothing but `symfony/http-client-contracts`, each platform
+package `symfony/http-client`: Omnifood runs in plain PHP, and in any framework. Its Symfony bundle
+is a bridge (`Bridge/Symfony`), whose components are not required; it never depends on omnibase.
 
 | Package | Platform | Capabilities |
 |---|---|---|
@@ -59,11 +62,38 @@ from the platform's public documentation and tested against recorded answers (`M
 composer require glitchr/omnifood omnifood/ubereats omnifood/deliveroo omnifood/justeat omnifood/thefork
 ```
 
+## Plain PHP
+
+```php
+use Omnifood\Registry;
+use Omnifood\TheFork\TheForkPlatformFactory;
+use Omnifood\UberEats\UberEatsPlatformFactory;
+use Symfony\Component\HttpClient\HttpClient;
+
+$http = HttpClient::create();   // or the application's client; a MockHttpClient in a test
+$registry = new Registry([new UberEatsPlatformFactory($http), new TheForkPlatformFactory($http)], [
+    'ubereats' => ['factory' => 'ubereats', 'options' => ['client_id' => '...', 'client_secret' => '...', 'store_id' => '...']],
+    'thefork' => ['factory' => 'thefork', 'options' => ['client_id' => '...', 'client_secret' => '...', 'restaurant_id' => '...']],
+]);
+$ubereats = $registry->get('ubereats');
+$registry->orders();        // the platforms that take orders
+$registry->reservations();  // the ones that take reservations
+```
+
+No bundle, no container: a factory per platform package, the registry built by hand.
+[docs/installation.md](docs/installation.md) opens on a whole script that runs as it is, on a
+recorded answer. A platform is built the first time it is asked for, and a key left empty only
+shows when a call needs it (`InvalidConfigException`) - `capabilities()` needs none. Keys typed in
+a back office rather than kept in the environment:
+`$registry->create('ubereats', ['client_id' => ..., 'client_secret' => ...])`.
+
 ## Symfony
 
-`Omnifood\Bridge\Symfony\OmnifoodBundle`: every `omnifood/*` package installed registered,
-`Omnifood\Registry` and `Omnifood\Validator` autowired, each configured platform injectable by its
-name, as what it does.
+`Omnifood\Bridge\Symfony\OmnifoodBundle` does that wiring in a Symfony application: every
+`omnifood/*` package installed registered on the application's `http_client`, `Omnifood\Registry`
+and `Omnifood\Validator` autowired, each configured platform injectable by its name, as what it
+does. Its components (`symfony/config`, `symfony/dependency-injection`, `symfony/http-kernel`) are
+not required by this package. See [docs/symfony.md](docs/symfony.md).
 
 ```yaml
 omnifood:
@@ -77,22 +107,7 @@ omnifood:
 public function __construct(OrdersInterface $ubereats, MenuInterface $deliveroo, ReservationsInterface $thefork, Registry $omnifood, Validator $validator) {}
 ```
 
-Nothing is built when the container compiles: a platform is built the first time it is asked for,
-and a key left empty only shows when a call needs it (`InvalidConfigException`) - `capabilities()`
-needs none. Keys typed in a back office rather than kept in the environment:
-`$registry->create('ubereats', ['client_id' => ..., 'client_secret' => ...])`. An application's own
-`PlatformFactoryInterface` is registered too (autoconfigured).
-
-## Without Symfony
-
-```php
-$registry = new Registry([new UberEatsPlatformFactory($http), new TheForkPlatformFactory($http)], [
-    'ubereats' => ['factory' => 'ubereats', 'options' => ['client_id' => '...', 'client_secret' => '...', 'store_id' => '...']],
-    'thefork' => ['factory' => 'thefork', 'options' => ['client_id' => '...', 'client_secret' => '...', 'restaurant_id' => '...']],
-]);
-$registry->orders();        // the platforms that take orders
-$registry->reservations();  // the ones that take reservations
-```
+An application's own `PlatformFactoryInterface` is registered too (autoconfigured).
 
 ## Docker: every platform with your keys
 
@@ -114,6 +129,7 @@ docker compose run --rm omnifood store:status ubereats
 docker compose run --rm omnifood reservations thefork --from today --to "+7 days"
 docker compose run --rm omnifood notify ubereats /omnifood/core/docker/body.json -H "X-Uber-Signature: ..."
 docker compose run --rm omnifood refresh thefork
+docker compose run --rm omnifood bare                            # plain PHP: no bundle, no container, and what PHP loaded
 docker compose run --rm omnifood test                            # every package's tests
 ```
 

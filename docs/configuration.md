@@ -1,49 +1,46 @@
 # Configuration
 
-## The bundle
+## The registry
 
-```yaml
-# config/packages/omnifood.yaml
-omnifood:
-    platforms:
-        ubereats:
-            factory: ubereats
-            options:
-                client_id: '%env(default::UBEREATS_CLIENT_ID)%'
-                client_secret: '%env(default::UBEREATS_CLIENT_SECRET)%'
-                store_id: '%env(default::UBEREATS_STORE_ID)%'
-        thefork:
-            factory: thefork
-            options:
-                client_id: '%env(default::THEFORK_CLIENT_ID)%'
-                client_secret: '%env(default::THEFORK_CLIENT_SECRET)%'
-                restaurant_id: '%env(default::THEFORK_RESTAURANT_ID)%'
-                webhook_token: '%env(default::THEFORK_WEBHOOK_TOKEN)%'
+```php
+use Omnifood\Registry;
+use Omnifood\TheFork\TheForkPlatformFactory;
+use Omnifood\UberEats\UberEatsPlatformFactory;
+use Symfony\Component\HttpClient\HttpClient;
+
+$http = HttpClient::create();
+$registry = new Registry([new UberEatsPlatformFactory($http), new TheForkPlatformFactory($http)], [
+    'ubereats' => ['factory' => 'ubereats', 'options' => [
+        'client_id' => getenv('UBEREATS_CLIENT_ID') ?: null,
+        'client_secret' => getenv('UBEREATS_CLIENT_SECRET') ?: null,
+        'store_id' => getenv('UBEREATS_STORE_ID') ?: null,
+    ]],
+    'thefork' => ['factory' => 'thefork', 'options' => [
+        'client_id' => getenv('THEFORK_CLIENT_ID') ?: null,
+        'client_secret' => getenv('THEFORK_CLIENT_SECRET') ?: null,
+        'restaurant_id' => getenv('THEFORK_RESTAURANT_ID') ?: null,
+        'webhook_token' => getenv('THEFORK_WEBHOOK_TOKEN') ?: null,
+    ]],
+]);
+
+$ubereats = $registry->get('ubereats');   // built once, the first time it is asked for
+$registry->orders();                       // the platforms that take orders
+$registry->reservations();                 // the ones that take reservations
 ```
 
 Each entry is a name (any), a `factory` (the package's: `ubereats`, `deliveroo`, `justeat`,
 `thefork`, `zenchef`) and its `options` (each package's README lists them). Two Uber Eats stores
-are two entries with the same factory.
+are two entries with the same factory. An option left empty - `null` or `''`, a variable not
+set - is as if not given: the factory's default stands.
 
-Each platform is then injectable by its name, as what it does:
-
-```php
-use Omnifood\OrdersInterface;
-use Omnifood\ReservationsInterface;
-
-public function __construct(
-    private OrdersInterface $ubereats,
-    private ReservationsInterface $thefork,
-) {}
-```
-
-`Omnifood\Registry` and `Omnifood\Validator` are autowired too.
+In a Symfony application the same entries are written in YAML, under `omnifood.platforms`, and
+each platform is injectable by its name: see [Symfony](symfony.md).
 
 ## Nothing breaks before a key is set
 
-A platform is built the first time it is asked for, and a key left empty
-(`%env(default::...)%` with the variable unset) only shows when a call needs it, as an
-`InvalidConfigException`. `capabilities()` needs no key. So a site boots before its accounts exist:
+A platform is built the first time it is asked for, and a key left empty (a variable not set)
+only shows when a call needs it, as an `InvalidConfigException`. `capabilities()` needs no key. So
+a site boots before its accounts exist:
 
 ```php
 $registry->has('ubereats');   // declared
@@ -72,13 +69,3 @@ Uber Eats, Deliveroo and TheFork hand out client-credentials tokens: the platfor
 it needs it and keeps it while it lives. TheFork and Uber Eats ask that tokens not be requested more
 than needed: a site that runs many processes keeps the token (`token()`, `refresh()` - a
 `RefreshableInterface`) and gives it back as the `access_token` / `token_expires_at` options.
-
-## Without Symfony
-
-```php
-$http = Symfony\Component\HttpClient\HttpClient::create();
-$registry = new Omnifood\Registry([new Omnifood\UberEats\UberEatsPlatformFactory($http)], [
-    'ubereats' => ['factory' => 'ubereats', 'options' => ['client_id' => '...', 'client_secret' => '...', 'store_id' => '...']],
-]);
-$ubereats = $registry->get('ubereats');
-```

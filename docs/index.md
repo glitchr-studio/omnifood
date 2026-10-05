@@ -5,13 +5,14 @@ Deliveroo and Just Eat, the table reservations of TheFork and Zenchef. A site ho
 hours and its bookings once; each platform's package turns them into that platform's calls, and
 turns what the platform sends back - orders, reservations, webhooks - into the same models.
 
-- [Installation](installation.md)
-- [Configuration](configuration.md): the Symfony bundle, the registry, keys from a back office
+- [Installation](installation.md): plain PHP first - a script that runs - then in a framework
+- [Configuration](configuration.md): the registry, keys from a back office, tokens
 - [Orders](orders.md): reading, accepting, denying, marking ready, cancelling
 - [Menu](menu.md): the model, the validator, pushing it, items out of stock
 - [Store](store.md): open, paused, hours
 - [Reservations](reservations.md): reading, creating, updating, the service's statuses, availability
 - [Webhooks](webhooks.md): checking and reading them, handling each once
+- [Symfony](symfony.md): the bundle, the platforms injected by name
 - [Harness](harness.md): the Docker console, with your keys
 
 ## The packages
