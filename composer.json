@@ -3,7 +3,7 @@
     "type": "library",
     "description": "Omnifood: one contract for the restaurant platforms - delivery orders (Uber Eats, Deliveroo, Just Eat) and table reservations (TheFork, Zenchef) - their menus, their stores, their webhooks, and its Symfony bundle.",
     "keywords": ["restaurant", "food", "delivery", "orders", "reservations", "menu", "ubereats", "deliveroo", "justeat", "thefork", "zenchef", "omnifood"],
-    "license": "LGPL-3.0-or-later",
+    "license": "MIT",
     "authors": [{"name": "Marco Meyer", "email": "marco.meyer@glitchr.io"}],
     "require": {
         "php": ">=8.2",
